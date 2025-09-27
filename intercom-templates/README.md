@@ -22,7 +22,7 @@ Observação: o caminho “false” do IF foi corrigido para não enviar mensage
 ## Diagrama de recursos e processos
 
 ```mermaid
-flowchart LR
+flowchart TD
 
   %% Camadas de recursos
   subgraph Teams[Microsoft Teams]
@@ -35,41 +35,71 @@ flowchart LR
   end
 
   subgraph Infra[Infra / Serviços]
-    DB[(PostgreSQL\nconversation_threads)]
+    DB[(PostgreSQL<br/>conversation_threads)]
     MSGraph[Microsoft Graph API]
   end
 
-  subgraph n8n[n8n Workflow]
-    Trigger[Teams Trigger]
-    IfReply{IF startsWith '/reply'?}
-    Clean[Function: Clean Prefix]
-    IntercomHTTP[HTTP → Intercom (comment)]
-    Webhook[Webhook (Inbound) Intercom]
-    Build[Function: Build Teams Message]
-    Sanitize[Function: Sanitize IDs]
-    PGSelect[PostgreSQL: SELECT mapping]
-    HasMap{Has mapping?}
-    GraphReply[HTTP → Graph replies]
-    GraphPost[HTTP → Graph post]
-    ExtractId[Function: Extract Message ID]
-    PGUpsert[PostgreSQL: UPSERT mapping]
+  subgraph n8nFlow[n8n Workflow]
+    subgraph TeamsFlow[Fluxo Teams → Intercom]
+      Trigger[Teams Trigger]
+      IfReply{IF startsWith<br/>'/reply'?}
+      Clean[Function:<br/>Clean Prefix]
+      IntercomHTTP[HTTP Request:<br/>Intercom Comment]
+    end
+    
+    subgraph IntercomFlow[Fluxo Intercom → Teams]
+      Webhook[Webhook Inbound:<br/>Intercom Events]
+      Build[Function:<br/>Build Teams Message]
+      Sanitize[Function:<br/>Sanitize IDs]
+      PGSelect[PostgreSQL:<br/>SELECT mapping]
+      HasMap{Has mapping?}
+      GraphReply[HTTP Request:<br/>Graph Reply]
+      GraphPost[HTTP Request:<br/>Graph Post]
+      ExtractId[Function:<br/>Extract Message ID]
+      PGUpsert[PostgreSQL:<br/>UPSERT mapping]
+    end
   end
 
   %% Fluxo Teams → Intercom (/reply)
-  TChan --> Trigger --> IfReply
-  IfReply -- "sim" --> Clean --> IntercomHTTP --> Conv
-  IfReply -- "não" -->|ignora| Trigger
+  TChan --> Trigger
+  Trigger --> IfReply
+  IfReply -->|"sim"| Clean
+  IfReply -.->|"não (ignora)"| TChan
+  Clean --> IntercomHTTP
+  IntercomHTTP --> Conv
 
   %% Fluxo Intercom → Teams (webhook)
-  Events --> Webhook --> Build --> Sanitize --> PGSelect --> HasMap
-  HasMap -- "sim" --> GraphReply --> MSGraph --> TChan
-  HasMap -- "não" --> GraphPost --> MSGraph --> TChan
-  GraphPost --> ExtractId --> PGUpsert
+  Events --> Webhook
+  Webhook --> Build
+  Build --> Sanitize
+  Sanitize --> PGSelect
+  PGSelect --> HasMap
+  HasMap -->|"sim"| GraphReply
+  HasMap -->|"não"| GraphPost
+  GraphReply --> MSGraph
+  GraphPost --> MSGraph
+  MSGraph --> TChan
+  GraphPost --> ExtractId
+  ExtractId --> PGUpsert
 
   %% Persistência/integrações
-  PGSelect --- DB
-  PGUpsert --- DB
-  IntercomHTTP --- Conv
+  PGSelect -.-> DB
+  PGUpsert -.-> DB
+
+  %% Estilização
+  classDef teams fill:#464775,stroke:#333,stroke-width:2px,color:#fff
+  classDef intercom fill:#1f8dd6,stroke:#333,stroke-width:2px,color:#fff
+  classDef infra fill:#2d5016,stroke:#333,stroke-width:2px,color:#fff
+  classDef decision fill:#ff6b6b,stroke:#333,stroke-width:2px,color:#fff
+  classDef function fill:#4ecdc4,stroke:#333,stroke-width:2px,color:#fff
+  classDef http fill:#ffe66d,stroke:#333,stroke-width:2px,color:#333
+
+  class TChan,Trigger teams
+  class Conv,Events,Webhook intercom
+  class DB,MSGraph infra
+  class IfReply,HasMap decision
+  class Clean,Build,Sanitize,ExtractId function
+  class IntercomHTTP,GraphReply,GraphPost,PGSelect,PGUpsert http
 ```
 
 Legenda:
