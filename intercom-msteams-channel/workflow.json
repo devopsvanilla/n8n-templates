@@ -1,0 +1,186 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "event": "message",
+        "channel": "YOUR_TEAMS_CHANNEL_ID"
+      },
+      "name": "Microsoft Teams Trigger",
+      "type": "n8n-nodes-base.microsoftTeams.trigger",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "{{$json[\"text\"]}}",
+              "operation": "startsWith",
+              "value2": "/reply"
+            }
+          ]
+        }
+      },
+      "name": "IF /reply",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        450,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "const message = $json[\"text\"] || '';\nreturn [{ json: { cleanedMessage: message.replace(/^\\/reply\\s*/, '') } }];"
+      },
+      "name": "Function Clean Prefix",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        650,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://api.intercom.io/messages",
+        "options": {
+          "headers": {
+            "Authorization": "Bearer YOUR_INTERCOM_API_TOKEN",
+            "Content-Type": "application/json"
+          }
+        },
+        "body": {
+          "message_type": "comment",
+          "body": "{{$json[\"cleanedMessage\"]}}",
+          "admin_id": "YOUR_ADMIN_ID"
+        }
+      },
+      "name": "HTTP Request Intercom",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        850,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "intercom-inbound",
+        "responseMode": "onReceived",
+        "responseData": "default",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "name": "Intercom Webhook (Inbound)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        250,
+        600
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "const b = $json;\nconst data = b.data || {};\nconst item = data.item || {};\nconst author = item.author || {};\nconst conversationId = item.id || item.conversation_id || data.id || 'unknown';\nconst raw = (item.conversation_message && item.conversation_message.body)\n  || item.body\n  || b.body\n  || '';\nconst text = String(raw).replace(/<[^>]+>/g, '').trim();\nconst authorType = author.type || 'unknown';\nconst authorName = author.name || author.user_id || author.id || authorType;\nconst summary = `Intercom (${authorType}${authorName ? `: ${authorName}` : ''}) [conv:${conversationId}]\\n${text}`;\nreturn [{ json: { teamsMessage: summary, conversationId } }];"
+      },
+      "name": "Build Teams Message",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        520,
+        600
+      ]
+    },
+    {
+      "parameters": {
+        "requestMethod": "POST",
+        "url": "https://graph.microsoft.com/v1.0/teams/YOUR_TEAM_ID/channels/YOUR_CHANNEL_ID/messages",
+        "jsonParameters": true,
+        "options": {
+          "headers": {
+            "Authorization": "Bearer YOUR_MS_GRAPH_TOKEN",
+            "Content-Type": "application/json"
+          }
+        },
+        "body": {
+          "body": {
+            "contentType": "html",
+            "content": "{{$json[\"teamsMessage\"]}}"
+          }
+        }
+      },
+      "name": "HTTP Request Teams (Graph)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        850,
+        600
+      ]
+    }
+  ],
+  "connections": {
+    "Microsoft Teams Trigger": {
+      "main": [
+        [
+          {
+            "node": "IF /reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF /reply": {
+      "main": [
+        [
+          {
+            "node": "Function Clean Prefix",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Function Clean Prefix": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request Intercom",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Intercom Webhook (Inbound)": {
+      "main": [
+        [
+          {
+            "node": "Build Teams Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Teams Message": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request Teams (Graph)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}
