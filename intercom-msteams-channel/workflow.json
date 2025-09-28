@@ -3,7 +3,7 @@
     {
       "parameters": {
         "event": "message",
-        "channel": "YOUR_TEAMS_CHANNEL_ID"
+        "channel": "{{$env.TEAMS_TRIGGER_CHANNEL_ID}}"
       },
       "name": "Microsoft Teams Trigger",
       "type": "n8n-nodes-base.microsoftTeams.trigger",
@@ -50,14 +50,14 @@
         "url": "https://api.intercom.io/messages",
         "options": {
           "headers": {
-            "Authorization": "Bearer YOUR_INTERCOM_API_TOKEN",
+            "Authorization": "Bearer {{$env.INTERCOM_API_TOKEN}}",
             "Content-Type": "application/json"
           }
         },
         "body": {
           "message_type": "comment",
           "body": "{{$json[\"cleanedMessage\"]}}",
-          "admin_id": "YOUR_ADMIN_ID"
+          "admin_id": "{{$env.INTERCOM_ADMIN_ID}}"
         }
       },
       "name": "HTTP Request Intercom",
@@ -94,18 +94,64 @@
       "type": "n8n-nodes-base.function",
       "typeVersion": 1,
       "position": [
-        520,
+        500,
+        600
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "const convId = String($json.conversationId || '');\n// SQL-escape single quotes for safety (basic)\nconst sqlConvId = convId.replace(/'/g, \"''\");\nreturn [{ json: { ...$json, sqlConvId } }];"
+      },
+      "name": "Sanitize IDs",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        620,
+        600
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT COALESCE((SELECT teams_message_id FROM conversation_threads WHERE intercom_conversation_id = '{{ $json[\"sqlConvId\"] }}' AND team_id = '{{$env.TEAMS_TEAM_ID}}' AND channel_id = '{{$env.TEAMS_CHANNEL_ID}}' LIMIT 1),'') AS mapped_message_id;"
+      },
+      "name": "Lookup Thread Mapping (PG)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 1,
+      "position": [
+        720,
+        600
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [],
+          "string": [
+            {
+              "value1": "{{$json[\"mapped_message_id\"]}}",
+              "operation": "isNotEmpty"
+            }
+          ],
+          "collection": []
+        }
+      },
+      "name": "IF Has Mapping",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        940,
         600
       ]
     },
     {
       "parameters": {
         "requestMethod": "POST",
-        "url": "https://graph.microsoft.com/v1.0/teams/YOUR_TEAM_ID/channels/YOUR_CHANNEL_ID/messages",
+        "url": "https://graph.microsoft.com/v1.0/teams/{{$env.TEAMS_TEAM_ID}}/channels/{{$env.TEAMS_CHANNEL_ID}}/messages/{{$json[\"mapped_message_id\"]}}/replies",
         "jsonParameters": true,
         "options": {
           "headers": {
-            "Authorization": "Bearer YOUR_MS_GRAPH_TOKEN",
+            "Authorization": "Bearer {{$env.MS_GRAPH_TOKEN}}",
             "Content-Type": "application/json"
           }
         },
@@ -116,12 +162,63 @@
           }
         }
       },
-      "name": "HTTP Request Teams (Graph)",
+      "name": "Post Reply to Thread",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 1,
       "position": [
-        850,
-        600
+        1180,
+        540
+      ]
+    },
+    {
+      "parameters": {
+        "requestMethod": "POST",
+        "url": "https://graph.microsoft.com/v1.0/teams/{{$env.TEAMS_TEAM_ID}}/channels/{{$env.TEAMS_CHANNEL_ID}}/messages",
+        "jsonParameters": true,
+        "options": {
+          "headers": {
+            "Authorization": "Bearer {{$env.MS_GRAPH_TOKEN}}",
+            "Content-Type": "application/json"
+          }
+        },
+        "body": {
+          "body": {
+            "contentType": "html",
+            "content": "{{$json[\"teamsMessage\"]}}"
+          }
+        }
+      },
+      "name": "Create Teams Message",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        1180,
+        660
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "const id = $json.id || ($json.body && $json.body.id) || '';\nreturn [{ json: { ...$json, createdMessageId: id } }];"
+      },
+      "name": "Extract Graph Message ID",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        1400,
+        660
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO conversation_threads (intercom_conversation_id, team_id, channel_id, teams_message_id) VALUES ('{{ $json[\"sqlConvId\"] }}','{{$env.TEAMS_TEAM_ID}}','{{$env.TEAMS_CHANNEL_ID}}','{{ $json[\"createdMessageId\"] }}') ON CONFLICT (intercom_conversation_id) DO UPDATE SET teams_message_id = EXCLUDED.teams_message_id, team_id = EXCLUDED.team_id, channel_id = EXCLUDED.channel_id, updated_at = NOW();"
+      },
+      "name": "Upsert Thread Mapping (PG)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 1,
+      "position": [
+        1620,
+        660
       ]
     }
   ],
@@ -175,7 +272,69 @@
       "main": [
         [
           {
-            "node": "HTTP Request Teams (Graph)",
+            "node": "Sanitize IDs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sanitize IDs": {
+      "main": [
+        [
+          {
+            "node": "Lookup Thread Mapping (PG)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lookup Thread Mapping (PG)": {
+      "main": [
+        [
+          {
+            "node": "IF Has Mapping",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Has Mapping": {
+      "main": [
+        [
+          {
+            "node": "Post Reply to Thread",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create Teams Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Teams Message": {
+      "main": [
+        [
+          {
+            "node": "Extract Graph Message ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Graph Message ID": {
+      "main": [
+        [
+          {
+            "node": "Upsert Thread Mapping (PG)",
             "type": "main",
             "index": 0
           }
