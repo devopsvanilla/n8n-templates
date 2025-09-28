@@ -4,6 +4,8 @@ Automatize a comunicação entre [Microsoft Teams](https://www.microsoft.com/pt-
 
 ## O que este template faz
 
+<img width="1153" height="749" alt="image" src="https://github.com/user-attachments/assets/ce57ec5a-0ce2-4c7e-9ac6-1da24bebe1bb" />
+
 Fluxo MSTeams → Intercom (comando /reply):
 
 - [Microsoft Teams](https://www.microsoft.com/pt-br/microsoft-teams) Trigger escuta mensagens em um canal específico.
