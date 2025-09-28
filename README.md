@@ -1,1 +1,1 @@
-# n8n-templates
+# [n8n](https://github.com/n8n-io/n8n)-templates
