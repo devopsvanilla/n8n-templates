@@ -215,7 +215,6 @@ Placeholders relacionados ao DB no workflow:
 
 - As queries usam `TEAMS_TEAM_ID` e `TEAMS_CHANNEL_ID` via variáveis de ambiente para filtrar por time/canal.
 
-
 ## Boas práticas
 
 - Não commit/armazenar tokens ou segredos no repositório.
