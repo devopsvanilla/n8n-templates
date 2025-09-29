@@ -6,8 +6,6 @@ Automate communication between [Microsoft Teams](https://www.microsoft.com/en-us
 
 ## What this template does
 
-<img width="1153" height="749" alt="image" src="https://github.com/user-attachments/assets/ce57ec5a-0ce2-4c7e-9ac6-1da24bebe1bb" />
-
 MSTeams → Intercom flow (/reply command):
 
 - [Microsoft Teams](https://www.microsoft.com/en-us/microsoft-teams) Trigger listens to messages in a specific channel.
