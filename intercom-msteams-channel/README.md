@@ -1,19 +1,22 @@
+
+Estimated reading time: 12 min
+
 # Intercom ↔ Microsoft Teams Template (n8n)
 
-Automatize a comunicação entre [Microsoft Teams](https://www.microsoft.com/pt-br/microsoft-teams) e [Intercom](https://www.intercom.com/) com um fluxo bidirecional pronto para importação no [n8n](https://github.com/n8n-io/n8n).
+Automate communication between [Microsoft Teams](https://www.microsoft.com/en-us/microsoft-teams) and [Intercom](https://www.intercom.com/) with a bidirectional flow ready for import into [n8n](https://github.com/n8n-io/n8n).
 
-## O que este template faz
+## What this template does
 
 <img width="1153" height="749" alt="image" src="https://github.com/user-attachments/assets/ce57ec5a-0ce2-4c7e-9ac6-1da24bebe1bb" />
 
-Fluxo MSTeams → Intercom (comando /reply):
+MSTeams → Intercom flow (/reply command):
 
-- [Microsoft Teams](https://www.microsoft.com/pt-br/microsoft-teams) Trigger escuta mensagens em um canal específico.
-- IF verifica se a mensagem começa com `/reply`.
-- Function Clean Prefix remove o prefixo e deixa apenas o conteúdo da resposta.
-- HTTP Request [Intercom](https://www.intercom.com/) envia um comentário para a conversa no Intercom (com placeholders de credenciais).
+- [Microsoft Teams](https://www.microsoft.com/en-us/microsoft-teams) Trigger listens to messages in a specific channel.
+- IF checks if the message starts with `/reply`.
+- Function Clean Prefix removes the prefix and leaves only the response content.
+- HTTP Request [Intercom](https://www.intercom.com/) sends a comment to the conversation in Intercom (with credential placeholders).
 
-Fluxo Intercom → MSTeams (webhook):
+Intercom → MSTeams flow (webhook):
 
 - Webhook (Inbound) recebe eventos do [Intercom](https://www.intercom.com/) (configurável na sua conta Intercom).
 - Build Teams Message normaliza o payload e monta uma mensagem de resumo.
@@ -23,7 +26,7 @@ Fluxo Intercom → MSTeams (webhook):
 
 Observação: o caminho “false” do IF foi corrigido para não enviar mensagens que não tenham o prefixo `/reply`.
 
-## Diagrama de recursos e processos
+## Resources and processes diagram
 
 ```mermaid
 flowchart TD
@@ -115,12 +118,12 @@ Legenda:
 - [PostgreSQL](https://www.postgresql.org/): guarda/consulta o mapeamento `conversation_id ↔ message_id` (tabela `conversation_threads`).
 - HTTP → Graph: cria post ou resposta em thread no canal, autenticado via token/credencial do [Microsoft Graph](https://docs.microsoft.com/pt-br/graph/).
 
-## Estrutura
+## Structure
 
 - `workflow.json` — workflow do n8n pronto para importação com todos os nodes e conexões.
 - `assets/` — opcional para capturas de tela e diagramas.
 
-## Placeholders que você deve preencher
+## Placeholders you must fill
 
 Agora o workflow usa variáveis de ambiente (sem precisar editar o JSON):
 
@@ -134,7 +137,7 @@ Agora o workflow usa variáveis de ambiente (sem precisar editar o JSON):
 
 Arquivo de exemplo: `.env.example` (copie para `.env` e preencha). O script `db/init_db.sh` carrega `.env` automaticamente; no [n8n](https://github.com/n8n-io/n8n), defina as mesmas variáveis no ambiente do processo ([Docker](https://www.docker.com/)/env do host).
 
-## Credenciais e permissões
+## Credentials and permissions
 
 ### [Microsoft Graph](https://docs.microsoft.com/pt-br/graph/) (Teams)
 
@@ -161,7 +164,7 @@ Arquivo de exemplo: `.env.example` (copie para `.env` e preencha). O script `db/
 - Escopos típicos: `write_conversations`, `read_conversations` (ajuste conforme seu uso).
 - Anote o token e o `admin_id` que enviará comentários.
 
-## Compatibilidade
+## Compatibility
 
 ### Versões Suportadas
 
@@ -295,7 +298,7 @@ Placeholders relacionados ao DB no workflow:
 
 - As queries usam `TEAMS_TEAM_ID` e `TEAMS_CHANNEL_ID` via variáveis de ambiente para filtrar por time/canal.
 
-## Boas práticas
+## Best practices
 
 - Não commit/armazenar tokens ou segredos no repositório.
 - Usar credenciais do [n8n](https://github.com/n8n-io/n8n) ([OAuth2](https://oauth.net/2/)/Token) e variáveis de ambiente.
@@ -406,6 +409,6 @@ Este template integra as seguintes soluções e tecnologias de terceiros:
 - Implemente monitoramento adequado e planos de contingência
 - Consulte profissionais especializados quando necessário
 
-## Licença
+## License
 
-MIT (ver arquivo `LICENSE`).
+MIT (see `LICENSE` file).

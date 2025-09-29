@@ -1,62 +1,65 @@
+
+Estimated reading time: 8 min
+
 # n8n-templates
 
-Este documento define as regras, práticas e padrões que todos os templates n8n
-neste repositório devem seguir para garantir qualidade, consistência e
-facilidade de manutenção.
+This document defines the rules, practices and standards that all n8n templates
+in this repository must follow to ensure quality, consistency and ease of
+maintenance.
 
-## 📋 Índice
+## 📋 Table of Contents
 
-1. [Estrutura de Arquivos](#️-estrutura-de-arquivos)
+1. [File Structure](#️-file-structure)
 2. [Workflow JSON](#-workflow-json)
-3. [Documentação](#-documentação)
-4. [Boas Práticas de Desenvolvimento](#️-boas-práticas-de-desenvolvimento)
-5. [Segurança](#-segurança)
-6. [Testes e Validação](#-testes-e-validação)
-7. [Prompt de Validação](#-prompt-de-validação)
+3. [Documentation](#-documentation)
+4. [Development Best Practices](#️-development-best-practices)
+5. [Security](#-security)
+6. [Testing and Validation](#-testing-and-validation)
+7. [Validation Prompt](#-validation-prompt)
 
-## 🗂️ Estrutura de Arquivos
+## 🗂️ File Structure
 
-### Estrutura Obrigatória
+### Required Structure
 
-Cada template deve seguir a estrutura de diretório padrão:
+Each template must follow the standard directory structure:
 
 ```text
-nome-do-template/
-├── README.md                 # Documentação principal (obrigatório)
-├── workflow.json            # Arquivo do workflow n8n (obrigatório)
-├── assets/                  # Capturas de tela e diagramas (opcional)
+template-name/
+├── README.md                 # Main documentation (required)
+├── workflow.json            # n8n workflow file (required)
+├── assets/                  # Screenshots and diagrams (optional)
 │   ├── screenshot.png
 │   └── diagram.svg
-├── db/                     # Scripts de banco de dados (se aplicável)
+├── db/                     # Database scripts (if applicable)
 │   ├── init.sql
 │   └── init_db.sh
-├── .env.example            # Exemplo de variáveis de ambiente (recomendado)
-└── docker-compose.yml      # Configuração Docker (se aplicável)
+├── .env.example            # Environment variables example (recommended)
+└── docker-compose.yml      # Docker configuration (if applicable)
 ```
 
-### Nomenclatura
+### Naming Convention
 
-- **Diretórios**: Use kebab-case (ex: `intercom-teams-integration`)
-- **Arquivos**: Use snake_case para scripts (ex: `init_db.sh`) e kebab-case para
-  outros (ex: `workflow.json`)
+- **Directories**: Use kebab-case (ex: `intercom-teams-integration`)
+- **Files**: Use snake_case for scripts (ex: `init_db.sh`) and kebab-case for
+  others (ex: `workflow.json`)
 
 ## 📄 Workflow JSON
 
-### Conformidade com n8n
+### n8n Compliance
 
-O arquivo `workflow.json` deve seguir rigorosamente as
-[diretrizes oficiais da n8n](https://n8n.notion.site/Template-submission-guidelines-9959894476734da3b402c90b124b1f77):
+The `workflow.json` file must strictly follow the
+[official n8n guidelines](https://n8n.notion.site/Template-submission-guidelines-9959894476734da3b402c90b124b1f77):
 
-#### 1. Estrutura JSON Válida
+#### 1. Valid JSON Structure
 
 ```json
 {
-  "name": "Nome Descritivo do Template",
+  "name": "Descriptive Template Name",
   "nodes": [
     {
       "parameters": {},
-      "id": "node-id-unico",
-      "name": "Nome do Node",
+      "id": "unique-node-id",
+      "name": "Node Name",
       "type": "n8n-nodes-base.nodeType",
       "typeVersion": 1,
       "position": [0, 0]
@@ -75,20 +78,20 @@ O arquivo `workflow.json` deve seguir rigorosamente as
 }
 ```
 
-#### 2. Requisitos de Nodes
+#### 2. Node Requirements
 
-- **IDs Únicos**: Cada node deve ter um ID único no formato
-  `nome-funcao-numero` (ex: `teams-trigger-1`)
-- **Nodes Nativos**: Use exclusivamente
-  [nodes nativos do n8n](https://docs.n8n.io/integrations/builtin/)
-- **Versões Atualizadas**: Sempre use as versões mais recentes dos nodes:
+- **Unique IDs**: Each node must have a unique ID in the format
+  `name-function-number` (ex: `teams-trigger-1`)
+- **Native Nodes**: Use exclusively
+  [native n8n nodes](https://docs.n8n.io/integrations/builtin/)
+- **Updated Versions**: Always use the latest node versions:
   - `n8n-nodes-base.code` (v2)
   - `n8n-nodes-base.httpRequest` (v4.2+)
   - `n8n-nodes-base.postgres` (v2.4+)
 
-#### 3. Tratamento de Erros
+#### 3. Error Handling
 
-Implemente tratamento robusto de erros:
+Implement robust error handling:
 
 ```json
 {
@@ -105,125 +108,142 @@ Implemente tratamento robusto de erros:
 }
 ```
 
-#### 4. Variáveis de Ambiente
+#### 4. Environment Variables
 
-- **Nunca** hardcode credenciais ou tokens
-- Use variáveis de ambiente: `={{$env.VARIABLE_NAME}}`
-- Documente todas as variáveis no README.md
+- **Never** hardcode credentials or tokens
+- Use environment variables: `={{$env.VARIABLE_NAME}}`
+- Document all variables in README.md
 
-### Posicionamento Visual
+### Visual Positioning
 
-- Organize nodes de forma lógica no canvas
-- Use coordenadas de posição consistentes
-- Mantenha espaçamento adequado entre nodes (mínimo 200px)
+- Organize nodes logically on canvas
+- Use consistent position coordinates
+- Maintain adequate spacing between nodes (minimum 200px)
 
-## 📚 Documentação
+## 📚 Documentation
 
-### README.md Obrigatório
+### Required README.md
 
-Cada template deve incluir um README.md completo com as seções:
+Each template must include a complete README.md with the sections:
 
-#### Estrutura Mínima
+#### Minimum Structure
 
 ```markdown
-# Nome do Template
+# Template Name
 
-Descrição clara e concisa do que o template faz.
+Clear and concise description of what the template does.
 
-## O que este template faz
+## What this template does
 
-Explicação detalhada da funcionalidade.
+Detailed explanation of functionality.
 
-## Diagrama de recursos e processos
+## Resources and processes diagram
 
-Diagrama Mermaid mostrando o fluxo de dados.
+Mermaid diagram showing data flow.
 
-## Estrutura
+## Structure
 
-Lista de arquivos e suas funções.
+List of files and their functions.
 
-## Placeholders que você deve preencher
+## Placeholders you must fill
 
-Lista completa de variáveis de ambiente necessárias.
+Complete list of required environment variables.
 
-## Credenciais e permissões
+## Credentials and permissions
 
-Instruções detalhadas de configuração de APIs.
+Detailed API configuration instructions.
 
-## Compatibilidade
+## Compatibility
 
-Versões suportadas de n8n e dependências.
+Supported n8n versions and dependencies.
 
-## Importar o workflow no n8n
+## Import workflow into n8n
 
-Passos detalhados de importação.
+Detailed import steps.
 
-## Exemplos de uso
+## Usage examples
 
-Casos de uso práticos com exemplos.
+Practical use cases with examples.
 
-## Exemplos de Payloads de Teste
+## Test Payload Examples
 
-Payloads de entrada e saída esperados.
+Expected input and output payloads.
 
-## Tratamento de Erros e Robustez
+## Error Handling and Robustness
 
-Documentação de cenários de erro.
+Error scenario documentation.
 
-## Solução de problemas
+## Troubleshooting
 
-FAQ e troubleshooting comum.
+Common FAQ and troubleshooting.
 
-## Boas práticas
+## Best practices
 
-Recomendações de segurança e uso.
+Security and usage recommendations.
 
-## Licença
+## License
 
-Especificação da licença aplicável.
+Applicable license specification.
 ```
 
-#### Links Obrigatórios
+#### Required Links
 
-Todos os templates devem incluir links para:
+All templates must include links to:
 
-- [Documentação oficial do n8n](https://docs.n8n.io/)
-- [Diretrizes de submissão de templates n8n](https://n8n.notion.site/Template-submission-guidelines-9959894476734da3b402c90b124b1f77)
-- APIs e serviços utilizados
-- Documentação de dependências
+- [Official n8n Documentation](https://docs.n8n.io/)
+- [n8n Template Submission Guidelines](https://n8n.notion.site/Template-submission-guidelines-9959894476734da3b402c90b124b1f77)
+- Used APIs and services
+- Dependencies documentation
 
-### Diagramas Mermaid
+### Mermaid Diagrams
 
-Use [Mermaid](https://mermaid.js.org/) para criar diagramas de fluxo:
+Use [Mermaid](https://mermaid.js.org/) to create flow diagrams:
 
 ```mermaid
 flowchart TD
-    A[Trigger] --> B{Condição}
-    B -->|Sim| C[Ação]
-    B -->|Não| D[Fim]
+    A[Trigger] --> B{Condition}
+    B -->|Yes| C[Action]
+    B -->|No| D[End]
 ```
 
-## 🛠️ Boas Práticas de Desenvolvimento
+### Markdownlint
 
-### Configuração por Ambiente
+The README.md file must be validated with markdownlint to ensure compliance
+with documentation quality standards:
 
-- Use arquivo `.env.example` com todas as variáveis necessárias
-- Documente o propósito de cada variável
-- Nunca commite arquivos `.env` reais
+```bash
+# Install markdownlint (if needed)
+npm install -g markdownlint-cli
 
-### Sanitização de Dados
+# Validate file using repository configuration
+markdownlint README.md
+```
+
+**Configuration**: The repository includes `.markdownlint.json` with rules
+optimized for technical templates (line limit: 120 characters,
+allows `<img>` tags).
+
+## 🛠️ Development Best Practices
+
+### Environment Configuration
+
+- Use `.env.example` file with all necessary variables
+- Document the purpose of each variable
+- Never commit real `.env` files
+
+### Data Sanitization
 
 ```javascript
-// Exemplo de sanitização em nodes Code
+// Example of sanitization in Code nodes
 const sanitizedValue = String(input)
-  .replace(/[\\x00-\\x1f\\x7f-\\x9f]/g, '')  // Remove caracteres de controle
-  .replace(/'/g, "''")                        // Escape SQL
-  .substring(0, 100);                         // Limite de tamanho
+  .replace(/[\\x00-\\x1f\\x7f-\\x9f]/g, '')  // Remove control characters
+  .replace(/'/g, "''")                        // SQL escape
+  .substring(0, 100);                         // Size limit
 ```
 
-### Timeouts e Retry Logic
+### Timeouts and Retry Logic
 
-Configure timeouts apropriados para todas as requisições HTTP:
+Configure appropriate timeouts for all HTTP requests:
 
 ```json
 {
@@ -237,14 +257,14 @@ Configure timeouts apropriados para todas as requisições HTTP:
 }
 ```
 
-## 🔒 Segurança
+## 🔒 Security
 
-### Validação de Webhooks
+### Webhook Validation
 
-Implemente validação HMAC quando aplicável:
+Implement HMAC validation when applicable:
 
 ```javascript
-// Validação de assinatura HMAC
+// HMAC signature validation
 const crypto = require('crypto');
 const signature = headers['x-hub-signature-256'];
 const secret = $env.WEBHOOK_SECRET;
@@ -259,210 +279,215 @@ if (signature !== expectedSignature) {
 }
 ```
 
-### Princípio do Menor Privilégio
+### Principle of Least Privilege
 
-- Configure permissões mínimas necessárias para APIs
-- Use tokens com escopo limitado
-- Documente permissões necessárias no README
+- Configure minimum necessary API permissions
+- Use tokens with limited scope
+- Document required permissions in README
 
-### Dados Sensíveis
+### Sensitive Data
 
-- Nunca logue dados sensíveis
-- Use mascaramento em logs quando necessário
-- Implemente rotação de credenciais quando possível
+- Never log sensitive data
+- Use masking in logs when necessary
+- Implement credential rotation when possible
 
-## 🧪 Testes e Validação
+## 🧪 Testing and Validation
 
-### Validação de JSON
+### JSON Validation
 
-Sempre valide a sintaxe JSON antes do commit:
+Always validate JSON syntax before commit:
 
 ```bash
 cat workflow.json | jq . > /dev/null && \
-  echo "JSON válido" || echo "JSON inválido"
+  echo "Valid JSON" || echo "Invalid JSON"
 ```
 
-### Testes de Integração
+### Integration Testing
 
-- Teste com dados reais (mascarados)
-- Valide cenários de erro
-- Documente casos de teste no README
+- Test with real (masked) data
+- Validate error scenarios
+- Document test cases in README
 
-### Checklist de Qualidade
+### Quality Checklist
 
-- [ ] JSON válido
-- [ ] IDs únicos em todos os nodes
-- [ ] Tratamento de erros implementado
-- [ ] Variáveis de ambiente documentadas
-- [ ] README completo
-- [ ] Diagramas atualizados
-- [ ] Exemplos funcionais
+- [ ] Valid JSON
+- [ ] Unique IDs on all nodes
+- [ ] Error handling implemented
+- [ ] Environment variables documented
+- [ ] Complete README
+- [ ] Updated diagrams
+- [ ] Functional examples
 
-## 📝 Prompt de Validação
+## 📝 Validation Prompt
 
-### Contexto
+### Context
 
-Este prompt deve ser usado para validar templates n8n seguindo as diretrizes do
-[agents.md](https://agents.md/) para estrutura de prompts de alta qualidade.
+This prompt should be used to validate n8n templates following the guidelines from
+[agents.md](https://agents.md/) for high-quality prompt structure.
 
-### Papel e Objetivo
+### Role and Objective
 
 ```markdown
-Você é um especialista em automação n8n responsável pela validação de templates.
-Seu objetivo é garantir que templates n8n atendam aos padrões de qualidade,
-segurança e usabilidade definidos neste repositório.
+You are an n8n automation expert responsible for template validation.
+Your goal is to ensure that n8n templates meet the quality, security and
+usability standards defined in this repository.
 ```
 
-### Instruções Específicas
+### Specific Instructions
 
 ```markdown
-## Tarefa
-Analise o template n8n fornecido e valide se atende a TODOS os requisitos das
-diretrizes oficiais da n8n e deste repositório.
+## Task
+Analyze the provided n8n template and validate if it meets ALL requirements of
+the official n8n guidelines and this repository.
 
-## Análise Requerida
+## Required Analysis
 
-### 1. Estrutura de Arquivos
-- [ ] Verificar se o diretório segue a estrutura padrão
-- [ ] Validar nomenclatura de arquivos e diretórios
-- [ ] Confirmar presença de arquivos obrigatórios (README.md, workflow.json)
+### 1. File Structure
+- [ ] Verify directory follows standard structure
+- [ ] Validate file and directory naming
+- [ ] Confirm presence of required files (README.md, workflow.json)
 
 ### 2. Workflow JSON
-- [ ] Validar sintaxe JSON com `jq`
-- [ ] Verificar se todos os nodes têm IDs únicos
-- [ ] Confirmar uso exclusivo de nodes nativos n8n
-- [ ] Validar versões de nodes (usar versões mais recentes)
-- [ ] Verificar implementação de tratamento de erros
+- [ ] Validate JSON syntax with `jq`
+- [ ] Verify all nodes have unique IDs
+- [ ] Confirm exclusive use of native n8n nodes
+- [ ] Validate node versions (use latest versions)
+- [ ] Verify error handling implementation
   (`onError: "continueErrorOutput"`)
-- [ ] Confirmar uso de variáveis de ambiente (={{$env.VAR}})
-- [ ] Validar configurações de timeout e retry
-- [ ] Verificar posicionamento lógico de nodes
-- [ ] Confirmar mapeamento completo de conexões
+- [ ] Confirm use of environment variables (={{$env.VAR}})
+- [ ] Validate timeout and retry configurations
+- [ ] Verify logical node positioning
+- [ ] Confirm complete connection mapping
 
-### 3. Documentação
-- [ ] README.md segue estrutura mínima obrigatória
-- [ ] Todas as seções requeridas estão presentes
-- [ ] Variáveis de ambiente documentadas com exemplos
-- [ ] Links funcionais para recursos externos
-- [ ] Diagramas Mermaid presentes e atualizados
-- [ ] Exemplos de payloads completos
-- [ ] Troubleshooting documentado
+### 3. Documentation
+- [ ] README.md follows required minimum structure
+- [ ] All required sections are present
+- [ ] Environment variables documented with examples
+- [ ] Functional links to external resources
+- [ ] Mermaid diagrams present and updated
+- [ ] Complete payload examples
+- [ ] Troubleshooting documented
+- [ ] README.md validated with markdownlint (no errors)
 
-### 4. Segurança
-- [ ] Nenhuma credencial hardcoded no código
-- [ ] Implementação de sanitização de dados
-- [ ] Validação de webhooks (HMAC quando aplicável)
-- [ ] Timeouts configurados adequadamente
-- [ ] Permissões mínimas documentadas
+### 4. Security
+- [ ] No hardcoded credentials in code
+- [ ] Data sanitization implementation
+- [ ] Webhook validation (HMAC when applicable)
+- [ ] Timeouts configured appropriately
+- [ ] Minimum permissions documented
 
-### 5. Boas Práticas
-- [ ] Arquivo .env.example presente
-- [ ] Comentários em código JavaScript quando necessário
-- [ ] Tratamento robusto de cenários de erro
-- [ ] Logs estruturados para debugging
-- [ ] Código JavaScript otimizado e legível
+### 5. Best Practices
+- [ ] .env.example file present
+- [ ] JavaScript code comments when necessary
+- [ ] Robust error scenario handling
+- [ ] Structured logs for debugging
+- [ ] Optimized and readable JavaScript code
 
-## Formato de Resposta
+## Response Format
 
-Para cada categoria, forneça:
+For each category, provide:
 
-1. **Status**: ✅ Conforme / ⚠️ Parcialmente conforme / ❌ Não conforme
-2. **Detalhes**: Lista específica de itens validados
-3. **Problemas encontrados**: Descrição detalhada de não conformidades
-4. **Recomendações**: Correções específicas necessárias
-5. **Prioridade**: Alta/Média/Baixa para cada problema
+1. **Status**: ✅ Compliant / ⚠️ Partially compliant / ❌ Non-compliant
+2. **Details**: Specific list of validated items
+3. **Issues found**: Detailed description of non-conformities
+4. **Recommendations**: Specific corrections needed
+5. **Priority**: High/Medium/Low for each issue
 
-### Exemplo de Saída
+### Output Example
 
-#### Workflow JSON: ⚠️ Parcialmente conforme
-- ✅ Sintaxe JSON válida
-- ❌ Node "teams-trigger" sem ID único
-- ✅ Tratamento de erros implementado
-- **Recomendação**: Adicionar ID único "teams-trigger-1" no node Microsoft
-  Teams Trigger
-- **Prioridade**: Alta
+#### Workflow JSON: ⚠️ Partially compliant
+- ✅ Valid JSON syntax
+- ❌ Node "teams-trigger" without unique ID
+- ✅ Error handling implemented
+- **Recommendation**: Add unique ID "teams-trigger-1" to Microsoft Teams
+  Trigger node
+- **Priority**: High
 
-## Critérios de Aprovação
+## Approval Criteria
 
-O template será aprovado apenas quando:
-- Todas as categorias estiverem ✅ Conformes
-- Nenhum problema de prioridade Alta pendente
-- JSON válido e importável no n8n
-- Documentação completa e funcional
+The template will be approved only when:
+- All categories are ✅ Compliant
+- No High priority issues pending
+- Valid JSON importable in n8n
+- README.md passes markdownlint validation without errors
+- Complete and functional documentation
 ```
 
-### Parâmetros de Entrada
+### Input Parameters
 
 ```markdown
-## Informações Necessárias
+## Required Information
 
-Forneça os seguintes arquivos/informações:
+Provide the following files/information:
 
-1. **workflow.json**: Conteúdo completo do arquivo
-2. **README.md**: Conteúdo completo da documentação
-3. **Estrutura de diretório**: Lista de arquivos presentes
-4. **Arquivos adicionais**: .env.example, scripts, etc.
-5. **Contexto**: Breve descrição do que o template faz
+1. **workflow.json**: Complete file content
+2. **README.md**: Complete documentation content
+3. **Directory structure**: List of present files
+4. **Additional files**: .env.example, scripts, etc.
+5. **Context**: Brief description of what the template does
 
-## Validação Automática
+## Automated Validation
 
-Execute estes comandos antes da análise:
+Execute these commands before analysis:
 
 ```bash
-# Validar JSON
+# Validate JSON
 cat workflow.json | jq . > /dev/null
 
-# Verificar estrutura
+# Check structure
 ls -la template-directory/
 
-# Validar links no README
+# Validate README.md with markdownlint (required)
 markdownlint README.md
+
+# Check for formatting errors
+echo "README.md must pass markdownlint validation without errors"
 ```
 
-### Critérios de Qualidade
+### Quality Criteria
 
 ```markdown
-## Níveis de Qualidade
+## Quality Levels
 
-### ⭐ Básico (Mínimo para aprovação)
-- JSON válido e importável
-- README com seções obrigatórias
-- Variáveis de ambiente documentadas
-- Tratamento básico de erros
+### ⭐ Basic (Minimum for approval)
+- Valid and importable JSON
+- README with required sections
+- README.md validated with markdownlint (0 errors)
+- Environment variables documented
+- Basic error handling
 
-### ⭐⭐ Intermediário 
-- Diagramas Mermaid atualizados
-- Exemplos de payloads completos
-- Sanitização de dados implementada
-- Troubleshooting documentado
+### ⭐⭐ Intermediate 
+- Updated Mermaid diagrams
+- Complete payload examples
+- Data sanitization implemented
+- Troubleshooting documented
 
-### ⭐⭐⭐ Avançado
-- Validação HMAC de webhooks
-- Logs estruturados para debugging
-- Fallbacks e recuperação de erros
-- Testes automatizados
+### ⭐⭐⭐ Advanced
+- Webhook HMAC validation
+- Structured logs for debugging
+- Fallbacks and error recovery
+- Automated tests
 
-### ⭐⭐⭐⭐ Excelente
-- Código otimizado e comentado
-- Documentação rica com casos de uso
-- Implementação de padrões de segurança
-- Suporte a diferentes ambientes
+### ⭐⭐⭐⭐ Excellent
+- Optimized and commented code
+- Rich documentation with use cases
+- Security pattern implementation
+- Support for different environments
 
-## Referências Técnicas
+## Technical References
 
-- [Diretrizes oficiais n8n](https://n8n.notion.site/Template-submission-guidelines-9959894476734da3b402c90b124b1f77)
-- [Documentação n8n](https://docs.n8n.io/)
-- [Nodes nativos n8n](https://docs.n8n.io/integrations/builtin/)
-- [agents.md](https://agents.md/) para estrutura de prompts
-- [Mermaid.js](https://mermaid.js.org/) para diagramas
+- [Official n8n Guidelines](https://n8n.notion.site/Template-submission-guidelines-9959894476734da3b402c90b124b1f77)
+- [n8n Documentation](https://docs.n8n.io/)
+- [n8n Native Nodes](https://docs.n8n.io/integrations/builtin/)
+- [agents.md](https://agents.md/) for prompt structure
+- [Mermaid.js](https://mermaid.js.org/) for diagrams
 
-## 📄 Licença
+## 📄 License
 
-Todos os templates devem incluir uma licença clara. Por padrão, use
-[MIT License](https://opensource.org/licenses/MIT) a menos que especificado de
-outra forma.
+All templates must include a clear license. By default, use
+[MIT License](https://opensource.org/licenses/MIT) unless specified otherwise.
 
-## 🔗 Referências
+## 🔗 References
 
 - [n8n Documentation](https://docs.n8n.io/)
 - [Template Submission Guidelines](https://n8n.notion.site/Template-submission-guidelines-9959894476734da3b402c90b124b1f77)
@@ -473,5 +498,5 @@ outra forma.
 
 ---
 
-*Este documento foi criado seguindo as diretrizes do [agents.md](https://agents.md/)
-para máxima compatibilidade com agentes de código AI.*
+*This document was created following [agents.md](https://agents.md/) guidelines
+for maximum compatibility with AI code agents.*
