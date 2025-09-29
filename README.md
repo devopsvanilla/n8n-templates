@@ -1,11 +1,11 @@
 
-Estimated reading time: 8 min
-
 # n8n-templates
 
 This document defines the rules, practices and standards that all n8n templates
 in this repository must follow to ensure quality, consistency and ease of
 maintenance.
+
+⏳ Estimated reading time: 8 min
 
 ## 📋 Table of Contents
 

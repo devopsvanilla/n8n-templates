@@ -1,9 +1,8 @@
-
-Estimated reading time: 12 min
-
 # Intercom ↔ Microsoft Teams Template (n8n)
 
 Automate communication between [Microsoft Teams](https://www.microsoft.com/en-us/microsoft-teams) and [Intercom](https://www.intercom.com/) with a bidirectional flow ready for import into [n8n](https://github.com/n8n-io/n8n).
+
+⏳ Estimated reading time: 12 min
 
 ## What this template does
 
@@ -18,43 +17,43 @@ MSTeams → Intercom flow (/reply command):
 
 Intercom → MSTeams flow (webhook):
 
-- Webhook (Inbound) recebe eventos do [Intercom](https://www.intercom.com/) (configurável na sua conta Intercom).
-- Build Teams Message normaliza o payload e monta uma mensagem de resumo.
-- Lookup Thread Mapping ([PostgreSQL](https://www.postgresql.org/)) consulta o mapeamento `conversation_id → message_id` em um banco PostgreSQL.
-- IF Has Mapping: se existir `message_id`, publica como resposta no tópico correspondente; caso contrário, cria um novo tópico.
-- Save Thread Mapping salva o `message_id` recém-criado para a próxima vez.
+- Webhook (Inbound) receives events from [Intercom](https://www.intercom.com/) (configurable in your Intercom account).
+- Build Teams Message normalizes the payload and builds a summary message.
+- Lookup Thread Mapping ([PostgreSQL](https://www.postgresql.org/)) queries the `conversation_id → message_id` mapping in a PostgreSQL database.
+- IF Has Mapping: if `message_id` exists, posts as a reply in the corresponding thread; otherwise, creates a new thread.
+- Save Thread Mapping saves the newly created `message_id` for next time.
 
-Observação: o caminho “false” do IF foi corrigido para não enviar mensagens que não tenham o prefixo `/reply`.
+Note: the "false" path of the IF was fixed to not send messages that don't have the `/reply` prefix.
 
 ## Resources and processes diagram
 
 ```mermaid
 flowchart TD
 
-  %% Camadas de recursos
+  %% Resource layers
   subgraph Teams[Microsoft Teams]
-    TChan[Canal do Teams]
+    TChan[Teams Channel]
   end
 
   subgraph Intercom[Intercom]
-    Conv[Conversa no Intercom]
-    Events[Eventos de Webhook]
+    Conv[Intercom Conversation]
+    Events[Webhook Events]
   end
 
-  subgraph Infra[Infra / Serviços]
+  subgraph Infra[Infrastructure / Services]
     DB[(PostgreSQL<br/>conversation_threads)]
     MSGraph[Microsoft Graph API]
   end
 
   subgraph n8nFlow[n8n Workflow]
-    subgraph TeamsFlow[Fluxo Teams → Intercom]
+    subgraph TeamsFlow[Teams → Intercom Flow]
       Trigger[Teams Trigger]
       IfReply{IF startsWith<br/>'/reply'?}
       Clean[Function:<br/>Clean Prefix]
       IntercomHTTP[HTTP Request:<br/>Intercom Comment]
     end
     
-    subgraph IntercomFlow[Fluxo Intercom → Teams]
+    subgraph IntercomFlow[Intercom → Teams Flow]
       Webhook[Webhook Inbound:<br/>Intercom Events]
       Build[Function:<br/>Build Teams Message]
       Sanitize[Function:<br/>Sanitize IDs]
@@ -67,33 +66,33 @@ flowchart TD
     end
   end
 
-  %% Fluxo Teams → Intercom (/reply)
+  %% Teams → Intercom Flow (/reply)
   TChan --> Trigger
   Trigger --> IfReply
-  IfReply -->|"sim"| Clean
-  IfReply -.->|"não (ignora)"| TChan
+  IfReply -->|"yes"| Clean
+  IfReply -.->|"no (ignore)"| TChan
   Clean --> IntercomHTTP
   IntercomHTTP --> Conv
 
-  %% Fluxo Intercom → Teams (webhook)
+  %% Intercom → Teams Flow (webhook)
   Events --> Webhook
   Webhook --> Build
   Build --> Sanitize
   Sanitize --> PGSelect
   PGSelect --> HasMap
-  HasMap -->|"sim"| GraphReply
-  HasMap -->|"não"| GraphPost
+  HasMap -->|"yes"| GraphReply
+  HasMap -->|"no"| GraphPost
   GraphReply --> MSGraph
   GraphPost --> MSGraph
   MSGraph --> TChan
   GraphPost --> ExtractId
   ExtractId --> PGUpsert
 
-  %% Persistência/integrações
+  %% Persistence/integrations
   PGSelect -.-> DB
   PGUpsert -.-> DB
 
-  %% Estilização
+  %% Styling
   classDef teams fill:#464775,stroke:#333,stroke-width:2px,color:#fff
   classDef intercom fill:#1f8dd6,stroke:#333,stroke-width:2px,color:#fff
   classDef infra fill:#2d5016,stroke:#333,stroke-width:2px,color:#fff
@@ -109,64 +108,64 @@ flowchart TD
   class IntercomHTTP,GraphReply,GraphPost,PGSelect,PGUpsert http
 ```
 
-Legenda:
+Legend:
 
-- Teams Trigger: escuta mensagens no canal configurado via env (`TEAMS_TRIGGER_CHANNEL_ID`).
-- IF /reply: somente mensagens começando com `/reply` seguem para o [Intercom](https://www.intercom.com/).
-- HTTP → Intercom: publica comentário na conversa usando `INTERCOM_API_TOKEN` e `INTERCOM_ADMIN_ID`.
-- Webhook Inbound: recebe eventos do [Intercom](https://www.intercom.com/) e inicia o fluxo para o Teams.
-- [PostgreSQL](https://www.postgresql.org/): guarda/consulta o mapeamento `conversation_id ↔ message_id` (tabela `conversation_threads`).
-- HTTP → Graph: cria post ou resposta em thread no canal, autenticado via token/credencial do [Microsoft Graph](https://docs.microsoft.com/pt-br/graph/).
+- Teams Trigger: listens to messages in the configured channel via env (`TEAMS_TRIGGER_CHANNEL_ID`).
+- IF /reply: only messages starting with `/reply` proceed to [Intercom](https://www.intercom.com/).
+- HTTP → Intercom: posts comment to conversation using `INTERCOM_API_TOKEN` and `INTERCOM_ADMIN_ID`.
+- Webhook Inbound: receives events from [Intercom](https://www.intercom.com/) and starts the flow to Teams.
+- [PostgreSQL](https://www.postgresql.org/): stores/queries the mapping `conversation_id ↔ message_id` (table `conversation_threads`).
+- HTTP → Graph: creates post or thread reply in channel, authenticated via token/credential for [Microsoft Graph](https://docs.microsoft.com/en-us/graph/).
 
 ## Structure
 
-- `workflow.json` — workflow do n8n pronto para importação com todos os nodes e conexões.
-- `assets/` — opcional para capturas de tela e diagramas.
+- `workflow.json` — n8n workflow ready for import with all nodes and connections.
+- `assets/` — optional for screenshots and diagrams.
 
 ## Placeholders you must fill
 
-Agora o workflow usa variáveis de ambiente (sem precisar editar o JSON):
+The workflow now uses environment variables (no need to edit the JSON):
 
-- `TEAMS_TRIGGER_CHANNEL_ID` — canal monitorado pelo [Microsoft Teams](https://www.microsoft.com/pt-br/microsoft-teams) Trigger
-- `TEAMS_TEAM_ID` — ID do time no [Microsoft Teams](https://www.microsoft.com/pt-br/microsoft-teams) (Graph)
-- `TEAMS_CHANNEL_ID` — ID do canal no [Microsoft Teams](https://www.microsoft.com/pt-br/microsoft-teams) (Graph) para publicar
-- `MS_GRAPH_TOKEN` — token [OAuth2](https://oauth.net/2/) de acesso ao [Microsoft Graph](https://docs.microsoft.com/pt-br/graph/)
-- `INTERCOM_API_TOKEN` — token de API do [Intercom](https://www.intercom.com/)
-- `INTERCOM_ADMIN_ID` — ID do admin do [Intercom](https://www.intercom.com/)
-- `INTERCOM_WEBHOOK_SECRET` — opcional; se definido, o Webhook do Intercom deve enviar `x-hub-signature-256` e o fluxo valida a presença da assinatura
+- `TEAMS_TRIGGER_CHANNEL_ID` — channel monitored by [Microsoft Teams](https://www.microsoft.com/en-us/microsoft-teams) Trigger
+- `TEAMS_TEAM_ID` — Team ID in [Microsoft Teams](https://www.microsoft.com/en-us/microsoft-teams) (Graph)
+- `TEAMS_CHANNEL_ID` — Channel ID in [Microsoft Teams](https://www.microsoft.com/en-us/microsoft-teams) (Graph) for posting
+- `MS_GRAPH_TOKEN` — [OAuth2](https://oauth.net/2/) access token for [Microsoft Graph](https://docs.microsoft.com/en-us/graph/)
+- `INTERCOM_API_TOKEN` — [Intercom](https://www.intercom.com/) API token
+- `INTERCOM_ADMIN_ID` — [Intercom](https://www.intercom.com/) admin ID
+- `INTERCOM_WEBHOOK_SECRET` — optional; if set, the Intercom Webhook must send `x-hub-signature-256` and the flow validates the signature presence
 
-Arquivo de exemplo: `.env.example` (copie para `.env` e preencha). O script `db/init_db.sh` carrega `.env` automaticamente; no [n8n](https://github.com/n8n-io/n8n), defina as mesmas variáveis no ambiente do processo ([Docker](https://www.docker.com/)/env do host).
+Example file: `.env.example` (copy to `.env` and fill). The `db/init_db.sh` script loads `.env` automatically; in [n8n](https://github.com/n8n-io/n8n), define the same variables in the process environment ([Docker](https://www.docker.com/)/host env).
 
 ## Credentials and permissions
 
-### [Microsoft Graph](https://docs.microsoft.com/pt-br/graph/) (Teams)
+### [Microsoft Graph](https://docs.microsoft.com/en-us/graph/) (Teams)
 
-1. Registrar aplicativo no [Azure AD](https://azure.microsoft.com/pt-br/services/active-directory/)
+1. Register application in [Azure AD](https://azure.microsoft.com/en-us/services/active-directory/)
 
-   - [Azure Portal](https://portal.azure.com/) → [Microsoft Entra ID](https://www.microsoft.com/pt-br/security/business/identity-access/microsoft-entra-id) → Registros de aplicativos → Novo registro.
-   - Anote: Application (client) ID, Directory (tenant) ID.
+   - [Azure Portal](https://portal.azure.com/) → [Microsoft Entra ID](https://www.microsoft.com/en-us/security/business/identity-access/microsoft-entra-id) → App registrations → New registration.
+   - Note: Application (client) ID, Directory (tenant) ID.
 
-2. Permissões Graph mínimas sugeridas
+2. Minimum suggested Graph permissions
 
-   - `ChannelMessage.Send` (delegada ou app-only) para postar em canais.
-   - `Team.ReadBasic.All` para resolver times/canais conforme necessário.
-   - Se for usar chat privado/thread: avalie `Chat.ReadWrite` (delegada) ou RSC/app-only com escopos por recurso.
+   - `ChannelMessage.Send` (delegated or app-only) to post in channels.
+   - `Team.ReadBasic.All` to resolve teams/channels as needed.
+   - If using private chat/thread: consider `Chat.ReadWrite` (delegated) or RSC/app-only with resource scopes.
 
-3. Segredo/Tokens
+3. Secrets/Tokens
 
-   - Crie um Client Secret (Certificados e segredos) se for usar app-only com [Client Credentials](https://docs.microsoft.com/pt-br/azure/active-directory/develop/v2-oauth2-client-creds-grant-flow).
-   - Se usar fluxo Delegated ([OAuth2 Authorization Code](https://oauth.net/2/grant-types/authorization-code/)), crie a credencial [OAuth2](https://oauth.net/2/) no [n8n](https://github.com/n8n-io/n8n) (Credenciais → OAuth2) apontando para [Microsoft Graph](https://docs.microsoft.com/pt-br/graph/), e selecione essa credencial no node HTTP Request (em vez de header Authorization manual).
-   - Para testes rápidos, você pode usar um token de Bearer no header `Authorization: Bearer YOUR_MS_GRAPH_TOKEN` (não recomendado em produção).
+   - Create a Client Secret (Certificates & secrets) if using app-only with [Client Credentials](https://docs.microsoft.com/en-us/azure/active-directory/develop/v2-oauth2-client-creds-grant-flow).
+   - If using Delegated flow ([OAuth2 Authorization Code](https://oauth.net/2/grant-types/authorization-code/)), create the [OAuth2](https://oauth.net/2/) credential in [n8n](https://github.com/n8n-io/n8n) (Credentials → OAuth2) pointing to [Microsoft Graph](https://docs.microsoft.com/en-us/graph/), and select this credential in the HTTP Request node (instead of manual Authorization header).
+   - For quick tests, you can use a Bearer token in the `Authorization: Bearer YOUR_MS_GRAPH_TOKEN` header (not recommended for production).
 
 ### [Intercom](https://www.intercom.com/)
 
 - [Intercom](https://www.intercom.com/) → [Developer Hub](https://developers.intercom.com/) → Create access token.
-- Escopos típicos: `write_conversations`, `read_conversations` (ajuste conforme seu uso).
-- Anote o token e o `admin_id` que enviará comentários.
+- Typical scopes: `write_conversations`, `read_conversations` (adjust according to your use).
+- Note the token and the `admin_id` that will send comments.
 
 ## Compatibility
 
-### Versões Suportadas
+### Supported Versions
 
 - **n8n**: >= 0.220.0
 - **Node types version**: 1
@@ -174,9 +173,9 @@ Arquivo de exemplo: `.env.example` (copie para `.env` e preencha). O script `db/
 - **Microsoft Graph API**: v1.0
 - **Intercom API**: v2.0
 
-### Dependências de Nodes
+### Node Dependencies
 
-Este template utiliza apenas nodes nativos do n8n:
+This template uses only native n8n nodes:
 
 - `n8n-nodes-base.microsoftTeams.trigger`
 - `n8n-nodes-base.if`
@@ -185,24 +184,24 @@ Este template utiliza apenas nodes nativos do n8n:
 - `n8n-nodes-base.webhook`
 - `n8n-nodes-base.postgres`
 
-## Importar o workflow no n8n
+## Import workflow into n8n
 
-1. Abra seu [n8n](https://github.com/n8n-io/n8n) → Workflows → Import.
-2. Cole o conteúdo de `intercom-msteams-channel/workflow.json` e confirme.
-3. Não é necessário editar o JSON. Defina as variáveis de ambiente e, no [n8n](https://github.com/n8n-io/n8n), selecione credenciais ([PostgreSQL](https://www.postgresql.org/) e, opcionalmente, [OAuth2](https://oauth.net/2/) do Graph) nos nodes apropriados quando importar.
-4. Ative o workflow. Para o Webhook Inbound do [Intercom](https://www.intercom.com/), copie a URL gerada pelo [n8n](https://github.com/n8n-io/n8n) (Production URL) e configure no [Intercom](https://www.intercom.com/) (eventos de conversa desejados).
+1. Open your [n8n](https://github.com/n8n-io/n8n) → Workflows → Import.
+2. Paste the content of `intercom-msteams-channel/workflow.json` and confirm.
+3. No need to edit the JSON. Set environment variables and, in [n8n](https://github.com/n8n-io/n8n), select credentials ([PostgreSQL](https://www.postgresql.org/) and, optionally, [OAuth2](https://oauth.net/2/) for Graph) in the appropriate nodes when importing.
+4. Activate the workflow. For the [Intercom](https://www.intercom.com/) Webhook Inbound, copy the URL generated by [n8n](https://github.com/n8n-io/n8n) (Production URL) and configure it in [Intercom](https://www.intercom.com/) (desired conversation events).
 
-## Exemplo de uso (/reply)
+## Usage examples (/reply)
 
-- No canal do [Teams](https://www.microsoft.com/pt-br/microsoft-teams) monitorado, envie: `/reply O cliente confirmou o horário.`
-- O fluxo limpará o prefixo e enviará um comentário ao [Intercom](https://www.intercom.com/).
-- Quando houver um novo evento no [Intercom](https://www.intercom.com/) (ex.: resposta do usuário/admin), o Webhook aciona o fluxo e publica um resumo no canal do [Teams](https://www.microsoft.com/pt-br/microsoft-teams).
+- In the monitored [Teams](https://www.microsoft.com/en-us/microsoft-teams) channel, send: `/reply The customer confirmed the appointment.`
+- The flow will clean the prefix and send a comment to [Intercom](https://www.intercom.com/).
+- When there's a new event in [Intercom](https://www.intercom.com/) (e.g., user/admin response), the Webhook triggers the flow and posts a summary in the [Teams](https://www.microsoft.com/en-us/microsoft-teams) channel.
 
-## Exemplos de Payloads de Teste
+## Test Payload Examples
 
-### Payload do Intercom (Webhook)
+### Intercom Payload (Webhook)
 
-Exemplo de evento recebido quando uma mensagem é criada no Intercom:
+Example event received when a message is created in Intercom:
 
 ```json
 {
@@ -211,72 +210,72 @@ Exemplo de evento recebido quando uma mensagem é criada no Intercom:
     "item": {
       "id": "conv_123456789",
       "conversation_id": "conv_123456789",
-      "body": "<p>Olá, preciso de ajuda com meu pedido #12345</p>",
+      "body": "<p>Hello, I need help with my order #12345</p>",
       "author": {
         "type": "user",
-        "name": "João Silva",
+        "name": "John Silva",
         "id": "user_abc123"
       },
       "conversation_message": {
-        "body": "<p>Olá, preciso de ajuda com meu pedido #12345</p>"
+        "body": "<p>Hello, I need help with my order #12345</p>"
       }
     }
   }
 }
 ```
 
-### Output Esperado no Teams
+### Expected Output in Teams
 
-Mensagem que será publicada no canal do Microsoft Teams:
-
-```text
-Intercom (user: João Silva) [conv:conv_123456789]
-Olá, preciso de ajuda com meu pedido #12345
-```
-
-### Payload de Resposta do Teams
-
-Exemplo de mensagem no Teams que será enviada ao Intercom:
+Message that will be posted in the Microsoft Teams channel:
 
 ```text
-Texto no Teams: "/reply Seu pedido #12345 foi processado com sucesso!"
+Intercom (user: John Silva) [conv:conv_123456789]
+Hello, I need help with my order #12345
 ```
 
-### Output Esperado no Intercom
+### Teams Response Payload
 
-Comentário que será adicionado à conversa no Intercom:
+Example message in Teams that will be sent to Intercom:
+
+```text
+Teams text: "/reply Your order #12345 has been processed successfully!"
+```
+
+### Expected Output in Intercom
+
+Comment that will be added to the conversation in Intercom:
 
 ```json
 {
   "message_type": "comment",
-  "body": "Seu pedido #12345 foi processado com sucesso!",
+  "body": "Your order #12345 has been processed successfully!",
   "admin_id": "admin_xyz789"
 }
 ```
 
-## Encadeamento de mensagens (incluído)
+## Message threading (included)
 
-Agora o template tenta responder no tópico correto quando possível:
+The template now tries to reply in the correct thread when possible:
 
-- Se já existir mapeamento `conversation_id (Intercom) ↔ message_id (Teams)`, usa `POST /v1.0/teams/{team-id}/channels/{channel-id}/messages/{message-id}/replies`.
-- Se ainda não existir mapeamento, cria um novo tópico com `POST /v1.0/teams/{team-id}/channels/{channel-id}/messages` e salva o `message_id` retornado para uso futuro.
+- If mapping `conversation_id (Intercom) ↔ message_id (Teams)` already exists, uses `POST /v1.0/teams/{team-id}/channels/{channel-id}/messages/{message-id}/replies`.
+- If mapping doesn't exist yet, creates a new thread with `POST /v1.0/teams/{team-id}/channels/{channel-id}/messages` and saves the returned `message_id` for future use.
 
-Como funciona o mapeamento (agora em [PostgreSQL](https://www.postgresql.org/)):
+How the mapping works (now in [PostgreSQL](https://www.postgresql.org/)):
 
-- Tabela `conversation_threads` com as colunas: `intercom_conversation_id` (PK), `team_id`, `channel_id`, `teams_message_id`, timestamps.
-- Lookup via SELECT busca `teams_message_id` para um `intercom_conversation_id` + `team_id` + `channel_id`.
-- Quando não existir, ao criar um novo tópico no [Teams](https://www.microsoft.com/pt-br/microsoft-teams), fazemos UPSERT para registrar o `teams_message_id`.
+- Table `conversation_threads` with columns: `intercom_conversation_id` (PK), `team_id`, `channel_id`, `teams_message_id`, timestamps.
+- Lookup via SELECT searches for `teams_message_id` for an `intercom_conversation_id` + `team_id` + `channel_id`.
+- When it doesn't exist, after creating a new thread in [Teams](https://www.microsoft.com/en-us/microsoft-teams), we do UPSERT to register the `teams_message_id`.
 
-## Banco de dados [PostgreSQL](https://www.postgresql.org/)
+## PostgreSQL database
 
-Arquivos:
+Files:
 
-- `db/init.sql` — cria a tabela `conversation_threads` e trigger de updated_at.
-- `db/init_db.sh` — script para criar o banco (se não existir) e aplicar o schema.
+- `db/init.sql` — creates the `conversation_threads` table and updated_at trigger.
+- `db/init_db.sh` — script to create the database (if it doesn't exist) and apply the schema.
 
-Configuração e inicialização:
+Configuration and initialization:
 
-1. Exportar variáveis de ambiente (ou passar inline):
+1. Export environment variables (or pass inline):
 
 ```bash
 export PGHOST=localhost
@@ -286,128 +285,128 @@ export PGPASSWORD=secret
 export DB_NAME=n8n_intercom
 ```
 
-1. Rodar o script:
+2. Run the script:
 
 ```bash
 ./intercom-msteams-channel/db/init_db.sh
 ```
 
-1. No [n8n](https://github.com/n8n-io/n8n), crie uma credencial do tipo [PostgreSQL](https://www.postgresql.org/) com os mesmos dados (host, porta, usuário, senha, database). Atribua essa credencial aos nodes Postgres do workflow (Lookup/Upsert).
+3. In [n8n](https://github.com/n8n-io/n8n), create a [PostgreSQL](https://www.postgresql.org/) type credential with the same data (host, port, user, password, database). Assign this credential to the workflow's Postgres nodes (Lookup/Upsert).
 
-Placeholders relacionados ao DB no workflow:
+DB-related placeholders in the workflow:
 
-- As queries usam `TEAMS_TEAM_ID` e `TEAMS_CHANNEL_ID` via variáveis de ambiente para filtrar por time/canal.
+- The queries use `TEAMS_TEAM_ID` and `TEAMS_CHANNEL_ID` via environment variables to filter by team/channel.
 
 ## Best practices
 
-- Não commit/armazenar tokens ou segredos no repositório.
-- Usar credenciais do [n8n](https://github.com/n8n-io/n8n) ([OAuth2](https://oauth.net/2/)/Token) e variáveis de ambiente.
-- Menor privilégio possível nas permissões do [Graph](https://docs.microsoft.com/pt-br/graph/) e [Intercom](https://www.intercom.com/).
-- Validar payloads do Webhook do [Intercom](https://www.intercom.com/) (assinaturas, se habilitadas).
+- Don't commit/store tokens or secrets in the repository.
+- Use [n8n](https://github.com/n8n-io/n8n) credentials ([OAuth2](https://oauth.net/2/)/Token) and environment variables.
+- Least privilege possible in [Graph](https://docs.microsoft.com/en-us/graph/) and [Intercom](https://www.intercom.com/) permissions.
+- Validate [Intercom](https://www.intercom.com/) Webhook payloads (signatures, if enabled).
 
-### Conformidade com Diretrizes de Submissão de Templates n8n
+### Compliance with n8n Template Submission Guidelines
 
-Este template foi desenvolvido seguindo as recomendações oficiais da n8n para submissão de templates, conforme documentado em: [Template submission guidelines](https://n8n.notion.site/Template-submission-guidelines-9959894476734da3b402c90b124b1f77)
+This template was developed following the official n8n recommendations for template submission, as documented in: [Template submission guidelines](https://n8n.notion.site/Template-submission-guidelines-9959894476734da3b402c90b124b1f77)
 
-| Diretriz | Status | Descrição |
-|----------|--------|-----------|
-| **Estrutura de Arquivo** | ✅ **Implementado** | Template organizado em diretório próprio com workflow.json, README.md e arquivos de suporte |
-| **Formato JSON Válido** | ✅ **Implementado** | workflow.json com sintaxe JSON válida e estrutura compatível com n8n |
-| **Metadados Completos** | ✅ **Implementado** | Nome descritivo, configurações de execução e versionamento adequado |
-| **Identificadores Únicos** | ✅ **Implementado** | Cada node possui ID único para evitar conflitos na importação |
-| **Nodes Nativos** | ✅ **Implementado** | Uso exclusivo de nodes nativos do n8n (microsoftTeamsTrigger, webhook, code, httpRequest, postgres, if) |
-| **Versões de Nodes** | ✅ **Implementado** | Uso de versões atualizadas dos nodes (code v2, httpRequest v4.2, postgres v2.4) |
-| **Tratamento de Erros** | ✅ **Implementado** | Implementação de ramos de erro com onError: "continueErrorOutput" |
-| **Configuração por Ambiente** | ✅ **Implementado** | Uso de variáveis de ambiente (={{$env.VARIABLE}}) ao invés de valores hardcoded |
-| **Documentação Completa** | ✅ **Implementado** | README.md detalhado com instruções de instalação, configuração e uso |
-| **Exemplos Práticos** | ✅ **Implementado** | Payloads de exemplo, casos de uso e troubleshooting |
-| **Posicionamento de Nodes** | ✅ **Implementado** | Coordenadas de posição definidas para layout visual organizado |
-| **Conexões Estruturadas** | ✅ **Implementado** | Mapeamento completo de conexões entre nodes incluindo ramos de erro |
-| **Segurança** | ✅ **Implementado** | Validação HMAC, sanitização de dados e timeouts configurados |
-| **Compatibilidade** | ✅ **Implementado** | Especificação de versões mínimas compatíveis (n8n >= 0.220.0) |
+| Guideline | Status | Description |
+|-----------|--------|-------------|
+| **File Structure** | ✅ **Implemented** | Template organized in its own directory with workflow.json, README.md and support files |
+| **Valid JSON Format** | ✅ **Implemented** | workflow.json with valid JSON syntax and n8n-compatible structure |
+| **Complete Metadata** | ✅ **Implemented** | Descriptive name, execution settings and proper versioning |
+| **Unique Identifiers** | ✅ **Implemented** | Each node has a unique ID to avoid conflicts during import |
+| **Native Nodes** | ✅ **Implemented** | Exclusive use of native n8n nodes (microsoftTeamsTrigger, webhook, code, httpRequest, postgres, if) |
+| **Node Versions** | ✅ **Implemented** | Use of updated node versions (code v2, httpRequest v4.2, postgres v2.4) |
+| **Error Handling** | ✅ **Implemented** | Implementation of error branches with onError: "continueErrorOutput" |
+| **Environment Configuration** | ✅ **Implemented** | Use of environment variables (={{$env.VARIABLE}}) instead of hardcoded values |
+| **Complete Documentation** | ✅ **Implemented** | Detailed README.md with installation, configuration and usage instructions |
+| **Practical Examples** | ✅ **Implemented** | Payload examples, use cases and troubleshooting |
+| **Node Positioning** | ✅ **Implemented** | Position coordinates defined for organized visual layout |
+| **Structured Connections** | ✅ **Implemented** | Complete mapping of connections between nodes including error branches |
+| **Security** | ✅ **Implemented** | HMAC validation, data sanitization and configured timeouts |
+| **Compatibility** | ✅ **Implemented** | Specification of minimum compatible versions (n8n >= 0.220.0) |
 
-## Tratamento de Erros e Robustez
+## Error Handling and Robustness
 
-Este template inclui várias camadas de proteção contra falhas:
+This template includes several layers of protection against failures:
 
-### Timeouts e Retry Logic
+### Timeouts and Retry Logic
 
-- **HTTP Requests**: Timeout de 10-15 segundos
-- **Retry automático**: Até 3 tentativas para Intercom, 2 para Teams
-- **Validação de dados**: Verificação de IDs antes do processamento
+- **HTTP Requests**: Timeout of 10-15 seconds
+- **Automatic retry**: Up to 3 attempts for Intercom, 2 for Teams
+- **Data validation**: ID verification before processing
 
-### Sanitização de Dados
+### Data Sanitization
 
-- **SQL Injection Prevention**: Escape de caracteres especiais
-- **Controle de tamanho**: Limitação de 100 caracteres para IDs
-- **Remoção de caracteres de controle**: Limpeza automática de dados perigosos
+- **SQL Injection Prevention**: Special character escaping
+- **Size control**: 100 character limit for IDs
+- **Control character removal**: Automatic cleaning of dangerous data
 
-### Validações Condicionais
+### Conditional Validations
 
-- **Prefixo /reply**: Apenas mensagens válidas são processadas
-- **Verificação de mapeamento**: Evita duplicação de threads
-- **Validation de payloads**: Verifica estrutura dos dados recebidos
+- **/reply prefix**: Only valid messages are processed
+- **Mapping verification**: Prevents thread duplication
+- **Payload validation**: Verifies data structure received
 
-### Roteamento de Erros e Fallbacks (novos)
+### Error Routing and Fallbacks (new)
 
-Foram adicionados ramos de erro dedicados com logs estruturados e estratégias de fallback:
+Dedicated error branches have been added with structured logs and fallback strategies:
 
-- `Log Intercom Error` → `Fallback Intercom`: quando a chamada ao Intercom falhar, o item é anotado com campos `_error`/`_fallback` para posterior reprocessamento, fila ou alerta.
-- `Log Graph Reply Error` → `Fallback Graph Reply`: se responder na thread falhar, a anotação sugere tentar como novo post ou notificar responsável.
-- `Log Graph Create Error` → `Fallback Graph Create`: se criar mensagem nova no canal falhar, o item é marcado para medidas manuais/automáticas.
+- `Log Intercom Error` → `Fallback Intercom`: when Intercom call fails, the item is annotated with `_error`/`_fallback` fields for later reprocessing, queue or alert.
+- `Log Graph Reply Error` → `Fallback Graph Reply`: if replying to thread fails, the annotation suggests trying as new post or notifying responsible party.
+- `Log Graph Create Error` → `Fallback Graph Create`: if creating new message in channel fails, the item is marked for manual/automatic measures.
 
-Esses fallbacks são neutros por padrão (não disparam novas chamadas automaticamente) e servem como pontos de extensão para integrações como fila, notificação e reprocessamento.
+These fallbacks are neutral by default (don't automatically trigger new calls) and serve as extension points for integrations like queue, notification and reprocessing.
 
-### Segurança do Webhook (Intercom)
+### Webhook Security (Intercom)
 
-- Node `Validate Intercom HMAC`: quando `INTERCOM_WEBHOOK_SECRET` estiver configurado, o fluxo exige o cabeçalho `x-hub-signature-256`. A ausência do cabeçalho provoca erro e desvia para o caminho de fallback, evitando processar eventos não assinados.
-- Dica para validação criptográfica completa: adicione um node `Crypto` (nativo do n8n) antes de "Build Teams Message" para calcular HMAC SHA-256 do corpo bruto do request com o `INTERCOM_WEBHOOK_SECRET` e compare com o valor do cabeçalho `x-hub-signature-256`.
+- Node `Validate Intercom HMAC`: when `INTERCOM_WEBHOOK_SECRET` is configured, the flow requires the `x-hub-signature-256` header. Absence of the header causes error and diverts to fallback path, avoiding processing unsigned events.
+- Tip for complete cryptographic validation: add a `Crypto` node (native to n8n) before "Build Teams Message" to calculate HMAC SHA-256 of raw request body with `INTERCOM_WEBHOOK_SECRET` and compare with `x-hub-signature-256` header value.
 
-## Solução de problemas
+## Troubleshooting
 
-- Mensagem não publica no [Teams](https://www.microsoft.com/pt-br/microsoft-teams): verifique permissões do [Graph](https://docs.microsoft.com/pt-br/graph/), validade do token e IDs de team/channel.
-- [Intercom](https://www.intercom.com/) não aciona Webhook: confira a URL pública do [n8n](https://github.com/n8n-io/n8n) (Production URL) e eventos selecionados.
-- `/reply` não dispara: confirme `YOUR_TEAMS_CHANNEL_ID` e que a mensagem inicia exatamente com `/reply` (case-sensitive por padrão).
-- **Erro "Invalid conversation ID"**: Verifique se o payload do Intercom contém o campo `id` ou `conversation_id` válido.
-- **Timeout em requests**: Verifique conectividade com APIs do Intercom e Microsoft Graph.
-- **Assinatura do Intercom ausente**: Se você definiu `INTERCOM_WEBHOOK_SECRET`, habilite a assinatura no painel do Intercom e confirme que o header `x-hub-signature-256` está chegando no Webhook do n8n.
+- Message doesn't post to [Teams](https://www.microsoft.com/en-us/microsoft-teams): check [Graph](https://docs.microsoft.com/en-us/graph/) permissions, token validity and team/channel IDs.
+- [Intercom](https://www.intercom.com/) doesn't trigger Webhook: verify the public [n8n](https://github.com/n8n-io/n8n) URL (Production URL) and selected events.
+- `/reply` doesn't trigger: confirm `YOUR_TEAMS_CHANNEL_ID` and that the message starts exactly with `/reply` (case-sensitive by default).
+- **"Invalid conversation ID" error**: Verify that the Intercom payload contains a valid `id` or `conversation_id` field.
+- **Request timeouts**: Check connectivity with Intercom and Microsoft Graph APIs.
+- **Missing Intercom signature**: If you set `INTERCOM_WEBHOOK_SECRET`, enable signature in Intercom panel and confirm that the `x-hub-signature-256` header is reaching the n8n Webhook.
 
-## Soluções de terceiros utilizadas
+## Third-party solutions used
 
-Este template integra as seguintes soluções e tecnologias de terceiros:
+This template integrates the following third-party solutions and technologies:
 
-- **[Microsoft Teams](https://www.microsoft.com/pt-br/microsoft-teams)** - Plataforma de comunicação e colaboração da Microsoft
-- **[Microsoft Graph API](https://docs.microsoft.com/pt-br/graph/)** - API unificada da Microsoft para acessar dados e serviços do Microsoft 365
-- **[Azure Active Directory / Microsoft Entra ID](https://www.microsoft.com/pt-br/security/business/identity-access/microsoft-entra-id)** - Serviço de identidade e gerenciamento de acesso da Microsoft
-- **[Intercom](https://www.intercom.com/)** - Plataforma de atendimento ao cliente e comunicação
-- **[n8n](https://github.com/n8n-io/n8n)** - Plataforma de automação de workflows open-source
-- **[PostgreSQL](https://www.postgresql.org/)** - Sistema de gerenciamento de banco de dados relacional open-source
-- **[Docker](https://www.docker.com/)** - Plataforma de containerização
-- **[OAuth 2.0](https://oauth.net/2/)** - Padrão de autorização para APIs
+- **[Microsoft Teams](https://www.microsoft.com/en-us/microsoft-teams)** - Microsoft's communication and collaboration platform
+- **[Microsoft Graph API](https://docs.microsoft.com/en-us/graph/)** - Microsoft's unified API for accessing Microsoft 365 data and services
+- **[Azure Active Directory / Microsoft Entra ID](https://www.microsoft.com/en-us/security/business/identity-access/microsoft-entra-id)** - Microsoft's identity and access management service
+- **[Intercom](https://www.intercom.com/)** - Customer service and communication platform
+- **[n8n](https://github.com/n8n-io/n8n)** - Open-source workflow automation platform
+- **[PostgreSQL](https://www.postgresql.org/)** - Open-source relational database management system
+- **[Docker](https://www.docker.com/)** - Containerization platform
+- **[OAuth 2.0](https://oauth.net/2/)** - Authorization standard for APIs
 
-## Disclaimer e responsabilidades
+## Disclaimer and responsibilities
 
-⚠️ **IMPORTANTE**: Este template é fornecido "AS-IS" (como está) sem qualquer tipo de garantia, expressa ou implícita, incluindo mas não limitada a garantias de adequação para um propósito específico, comercialização ou não violação de direitos.
+⚠️ **IMPORTANT**: This template is provided "AS-IS" without any warranty, express or implied, including but not limited to warranties of fitness for a particular purpose, merchantability or non-infringement.
 
-### Licenças e conformidade
+### Licenses and compliance
 
-- O uso deste template e das tecnologias de terceiros integradas deve respeitar **todas as licenças, termos de uso e políticas** de cada solução mencionada
-- É de **responsabilidade do usuário** verificar e cumprir os termos de licenciamento de cada tecnologia utilizada
-- Consulte a documentação oficial de cada serviço para entender suas limitações, custos e requisitos de licenciamento
+- The use of this template and integrated third-party technologies must respect **all licenses, terms of use and policies** of each mentioned solution
+- It is the **user's responsibility** to verify and comply with the licensing terms of each technology used
+- Consult the official documentation of each service to understand their limitations, costs and licensing requirements
 
-### Limitações de responsabilidade
+### Limitation of liability
 
-- O **autor não se responsabiliza** por qualquer uso indevido, inadequado ou em desconformidade com as licenças das tecnologias integradas
-- O **autor não oferece suporte** para problemas relacionados ao uso das APIs, serviços ou plataformas de terceiros
-- Qualquer **problema, interrupção ou limitação** nos serviços de terceiros está fora do controle e responsabilidade do autor
-- O **usuário assume total responsabilidade** pela implementação, configuração e uso desta solução
+- The **author is not responsible** for any improper, inadequate use or non-compliance with the licenses of integrated technologies
+- The **author does not provide support** for problems related to the use of third-party APIs, services or platforms
+- Any **problem, interruption or limitation** in third-party services is outside the author's control and responsibility
+- The **user assumes full responsibility** for the implementation, configuration and use of this solution
 
-### Recomendações
+### Recommendations
 
-- Teste sempre em ambiente de desenvolvimento antes de usar em produção
-- Mantenha-se atualizado com as mudanças nas APIs e políticas dos serviços utilizados
-- Implemente monitoramento adequado e planos de contingência
-- Consulte profissionais especializados quando necessário
+- Always test in development environment before using in production
+- Stay updated with changes in APIs and policies of used services
+- Implement adequate monitoring and contingency plans
+- Consult specialized professionals when necessary
 
 ## License
 
