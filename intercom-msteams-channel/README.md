@@ -130,6 +130,7 @@ Agora o workflow usa variáveis de ambiente (sem precisar editar o JSON):
 - `MS_GRAPH_TOKEN` — token [OAuth2](https://oauth.net/2/) de acesso ao [Microsoft Graph](https://docs.microsoft.com/pt-br/graph/)
 - `INTERCOM_API_TOKEN` — token de API do [Intercom](https://www.intercom.com/)
 - `INTERCOM_ADMIN_ID` — ID do admin do [Intercom](https://www.intercom.com/)
+- `INTERCOM_WEBHOOK_SECRET` — opcional; se definido, o Webhook do Intercom deve enviar `x-hub-signature-256` e o fluxo valida a presença da assinatura
 
 Arquivo de exemplo: `.env.example` (copie para `.env` e preencha). O script `db/init_db.sh` carrega `.env` automaticamente; no [n8n](https://github.com/n8n-io/n8n), defina as mesmas variáveis no ambiente do processo ([Docker](https://www.docker.com/)/env do host).
 
@@ -160,10 +161,31 @@ Arquivo de exemplo: `.env.example` (copie para `.env` e preencha). O script `db/
 - Escopos típicos: `write_conversations`, `read_conversations` (ajuste conforme seu uso).
 - Anote o token e o `admin_id` que enviará comentários.
 
+## Compatibilidade
+
+### Versões Suportadas
+
+- **n8n**: >= 0.220.0
+- **Node types version**: 1
+- **PostgreSQL**: >= 12.0
+- **Microsoft Graph API**: v1.0
+- **Intercom API**: v2.0
+
+### Dependências de Nodes
+
+Este template utiliza apenas nodes nativos do n8n:
+
+- `n8n-nodes-base.microsoftTeams.trigger`
+- `n8n-nodes-base.if`
+- `n8n-nodes-base.function`
+- `n8n-nodes-base.httpRequest`
+- `n8n-nodes-base.webhook`
+- `n8n-nodes-base.postgres`
+
 ## Importar o workflow no n8n
 
 1. Abra seu [n8n](https://github.com/n8n-io/n8n) → Workflows → Import.
-2. Cole o conteúdo de `intercom-templates/workflow.json` e confirme.
+2. Cole o conteúdo de `intercom-msteams-channel/workflow.json` e confirme.
 3. Não é necessário editar o JSON. Defina as variáveis de ambiente e, no [n8n](https://github.com/n8n-io/n8n), selecione credenciais ([PostgreSQL](https://www.postgresql.org/) e, opcionalmente, [OAuth2](https://oauth.net/2/) do Graph) nos nodes apropriados quando importar.
 4. Ative o workflow. Para o Webhook Inbound do [Intercom](https://www.intercom.com/), copie a URL gerada pelo [n8n](https://github.com/n8n-io/n8n) (Production URL) e configure no [Intercom](https://www.intercom.com/) (eventos de conversa desejados).
 
@@ -172,6 +194,62 @@ Arquivo de exemplo: `.env.example` (copie para `.env` e preencha). O script `db/
 - No canal do [Teams](https://www.microsoft.com/pt-br/microsoft-teams) monitorado, envie: `/reply O cliente confirmou o horário.`
 - O fluxo limpará o prefixo e enviará um comentário ao [Intercom](https://www.intercom.com/).
 - Quando houver um novo evento no [Intercom](https://www.intercom.com/) (ex.: resposta do usuário/admin), o Webhook aciona o fluxo e publica um resumo no canal do [Teams](https://www.microsoft.com/pt-br/microsoft-teams).
+
+## Exemplos de Payloads de Teste
+
+### Payload do Intercom (Webhook)
+
+Exemplo de evento recebido quando uma mensagem é criada no Intercom:
+
+```json
+{
+  "type": "conversation.message.created",
+  "data": {
+    "item": {
+      "id": "conv_123456789",
+      "conversation_id": "conv_123456789",
+      "body": "<p>Olá, preciso de ajuda com meu pedido #12345</p>",
+      "author": {
+        "type": "user",
+        "name": "João Silva",
+        "id": "user_abc123"
+      },
+      "conversation_message": {
+        "body": "<p>Olá, preciso de ajuda com meu pedido #12345</p>"
+      }
+    }
+  }
+}
+```
+
+### Output Esperado no Teams
+
+Mensagem que será publicada no canal do Microsoft Teams:
+
+```text
+Intercom (user: João Silva) [conv:conv_123456789]
+Olá, preciso de ajuda com meu pedido #12345
+```
+
+### Payload de Resposta do Teams
+
+Exemplo de mensagem no Teams que será enviada ao Intercom:
+
+```text
+Texto no Teams: "/reply Seu pedido #12345 foi processado com sucesso!"
+```
+
+### Output Esperado no Intercom
+
+Comentário que será adicionado à conversa no Intercom:
+
+```json
+{
+  "message_type": "comment",
+  "body": "Seu pedido #12345 foi processado com sucesso!",
+  "admin_id": "admin_xyz789"
+}
+```
 
 ## Encadeamento de mensagens (incluído)
 
@@ -208,7 +286,7 @@ export DB_NAME=n8n_intercom
 1. Rodar o script:
 
 ```bash
-./intercom-templates/db/init_db.sh
+./intercom-msteams-channel/db/init_db.sh
 ```
 
 1. No [n8n](https://github.com/n8n-io/n8n), crie uma credencial do tipo [PostgreSQL](https://www.postgresql.org/) com os mesmos dados (host, porta, usuário, senha, database). Atribua essa credencial aos nodes Postgres do workflow (Lookup/Upsert).
@@ -224,11 +302,51 @@ Placeholders relacionados ao DB no workflow:
 - Menor privilégio possível nas permissões do [Graph](https://docs.microsoft.com/pt-br/graph/) e [Intercom](https://www.intercom.com/).
 - Validar payloads do Webhook do [Intercom](https://www.intercom.com/) (assinaturas, se habilitadas).
 
+## Tratamento de Erros e Robustez
+
+Este template inclui várias camadas de proteção contra falhas:
+
+### Timeouts e Retry Logic
+
+- **HTTP Requests**: Timeout de 10-15 segundos
+- **Retry automático**: Até 3 tentativas para Intercom, 2 para Teams
+- **Validação de dados**: Verificação de IDs antes do processamento
+
+### Sanitização de Dados
+
+- **SQL Injection Prevention**: Escape de caracteres especiais
+- **Controle de tamanho**: Limitação de 100 caracteres para IDs
+- **Remoção de caracteres de controle**: Limpeza automática de dados perigosos
+
+### Validações Condicionais
+
+- **Prefixo /reply**: Apenas mensagens válidas são processadas
+- **Verificação de mapeamento**: Evita duplicação de threads
+- **Validation de payloads**: Verifica estrutura dos dados recebidos
+
+### Roteamento de Erros e Fallbacks (novos)
+
+Foram adicionados ramos de erro dedicados com logs estruturados e estratégias de fallback:
+
+- `Log Intercom Error` → `Fallback Intercom`: quando a chamada ao Intercom falhar, o item é anotado com campos `_error`/`_fallback` para posterior reprocessamento, fila ou alerta.
+- `Log Graph Reply Error` → `Fallback Graph Reply`: se responder na thread falhar, a anotação sugere tentar como novo post ou notificar responsável.
+- `Log Graph Create Error` → `Fallback Graph Create`: se criar mensagem nova no canal falhar, o item é marcado para medidas manuais/automáticas.
+
+Esses fallbacks são neutros por padrão (não disparam novas chamadas automaticamente) e servem como pontos de extensão para integrações como fila, notificação e reprocessamento.
+
+### Segurança do Webhook (Intercom)
+
+- Node `Validate Intercom HMAC`: quando `INTERCOM_WEBHOOK_SECRET` estiver configurado, o fluxo exige o cabeçalho `x-hub-signature-256`. A ausência do cabeçalho provoca erro e desvia para o caminho de fallback, evitando processar eventos não assinados.
+- Dica para validação criptográfica completa: adicione um node `Crypto` (nativo do n8n) antes de "Build Teams Message" para calcular HMAC SHA-256 do corpo bruto do request com o `INTERCOM_WEBHOOK_SECRET` e compare com o valor do cabeçalho `x-hub-signature-256`.
+
 ## Solução de problemas
 
 - Mensagem não publica no [Teams](https://www.microsoft.com/pt-br/microsoft-teams): verifique permissões do [Graph](https://docs.microsoft.com/pt-br/graph/), validade do token e IDs de team/channel.
 - [Intercom](https://www.intercom.com/) não aciona Webhook: confira a URL pública do [n8n](https://github.com/n8n-io/n8n) (Production URL) e eventos selecionados.
 - `/reply` não dispara: confirme `YOUR_TEAMS_CHANNEL_ID` e que a mensagem inicia exatamente com `/reply` (case-sensitive por padrão).
+- **Erro "Invalid conversation ID"**: Verifique se o payload do Intercom contém o campo `id` ou `conversation_id` válido.
+- **Timeout em requests**: Verifique conectividade com APIs do Intercom e Microsoft Graph.
+- **Assinatura do Intercom ausente**: Se você definiu `INTERCOM_WEBHOOK_SECRET`, habilite a assinatura no painel do Intercom e confirme que o header `x-hub-signature-256` está chegando no Webhook do n8n.
 
 ## Soluções de terceiros utilizadas
 
