@@ -302,6 +302,27 @@ Placeholders relacionados ao DB no workflow:
 - Menor privilégio possível nas permissões do [Graph](https://docs.microsoft.com/pt-br/graph/) e [Intercom](https://www.intercom.com/).
 - Validar payloads do Webhook do [Intercom](https://www.intercom.com/) (assinaturas, se habilitadas).
 
+### Conformidade com Diretrizes de Submissão de Templates n8n
+
+Este template foi desenvolvido seguindo as recomendações oficiais da n8n para submissão de templates, conforme documentado em: [Template submission guidelines](https://n8n.notion.site/Template-submission-guidelines-9959894476734da3b402c90b124b1f77)
+
+| Diretriz | Status | Descrição |
+|----------|--------|-----------|
+| **Estrutura de Arquivo** | ✅ **Implementado** | Template organizado em diretório próprio com workflow.json, README.md e arquivos de suporte |
+| **Formato JSON Válido** | ✅ **Implementado** | workflow.json com sintaxe JSON válida e estrutura compatível com n8n |
+| **Metadados Completos** | ✅ **Implementado** | Nome descritivo, configurações de execução e versionamento adequado |
+| **Identificadores Únicos** | ✅ **Implementado** | Cada node possui ID único para evitar conflitos na importação |
+| **Nodes Nativos** | ✅ **Implementado** | Uso exclusivo de nodes nativos do n8n (microsoftTeamsTrigger, webhook, code, httpRequest, postgres, if) |
+| **Versões de Nodes** | ✅ **Implementado** | Uso de versões atualizadas dos nodes (code v2, httpRequest v4.2, postgres v2.4) |
+| **Tratamento de Erros** | ✅ **Implementado** | Implementação de ramos de erro com onError: "continueErrorOutput" |
+| **Configuração por Ambiente** | ✅ **Implementado** | Uso de variáveis de ambiente (={{$env.VARIABLE}}) ao invés de valores hardcoded |
+| **Documentação Completa** | ✅ **Implementado** | README.md detalhado com instruções de instalação, configuração e uso |
+| **Exemplos Práticos** | ✅ **Implementado** | Payloads de exemplo, casos de uso e troubleshooting |
+| **Posicionamento de Nodes** | ✅ **Implementado** | Coordenadas de posição definidas para layout visual organizado |
+| **Conexões Estruturadas** | ✅ **Implementado** | Mapeamento completo de conexões entre nodes incluindo ramos de erro |
+| **Segurança** | ✅ **Implementado** | Validação HMAC, sanitização de dados e timeouts configurados |
+| **Compatibilidade** | ✅ **Implementado** | Especificação de versões mínimas compatíveis (n8n >= 0.220.0) |
+
 ## Tratamento de Erros e Robustez
 
 Este template inclui várias camadas de proteção contra falhas:
